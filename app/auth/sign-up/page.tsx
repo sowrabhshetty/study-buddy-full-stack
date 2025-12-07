@@ -1,193 +1,92 @@
 "use client"
 
-import type React from "react"
-
+import { useState, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Loader2, Mail, Lock, User } from "lucide-react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { useState, useMemo } from "react"
-import { BookOpen, Loader2, Mail, Lock, User } from "lucide-react"
 
 export default function SignUpPage() {
+  const router = useRouter()
+  const supabase = useMemo(() => createClient(), [])
+
   const [displayName, setDisplayName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const router = useRouter()
-  const supabase = useMemo(() => createClient(), [])
+  const [loading, setLoading] = useState(false)
 
-  const handleSignUp = async (e: React.FormEvent) => {
+  async function handleSignUp(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
 
-    if (!displayName.trim()) {
-      setError("Please enter your display name")
-      return
-    }
+    if (!displayName.trim()) return setError("Enter your display name")
+    if (password !== confirmPassword) return setError("Passwords do not match")
+    if (password.length < 6) return setError("Password must be at least 6 characters")
 
-    if (password !== confirmPassword) {
-      setError("Passwords do not match")
-      return
-    }
+    setLoading(true)
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters")
-      return
-    }
+    const { error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { display_name: displayName },
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    })
 
-    setIsLoading(true)
+    setLoading(false)
 
-    try {
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            display_name: displayName,
-          },
-          // Skip email confirmation for development
-          emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/dashboard`,
-        },
-      })
+    if (signUpError) return setError(signUpError.message)
 
-      if (signUpError) {
-        setError(signUpError.message)
-        return
-      }
-
-      // If user is created and session exists, redirect to dashboard
-      if (data?.user && data?.session) {
-        router.push("/dashboard")
-      } else if (data?.user) {
-        // User created but needs email confirmation
-        // For development, we'll try to sign in directly
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
-
-        if (!signInError) {
-          router.push("/dashboard")
-        } else {
-          // Email confirmation required
-          setError("Account created! Please check your email to confirm, or contact support if emails are not working.")
-        }
-      }
-    } catch (err) {
-      if (err instanceof TypeError && err.message.includes("NetworkError")) {
-        setError("Network error. Please check your connection and try again.")
-      } else {
-        setError(err instanceof Error ? err.message : "An unexpected error occurred")
-      }
-    } finally {
-      setIsLoading(false)
-    }
+    alert("Account created! Please check your email to confirm.")
+    router.push("/auth/login")
   }
 
   return (
-    <div className="flex min-h-svh w-full items-center justify-center bg-gradient-to-br from-background to-muted p-6 md:p-10">
+    <div className="flex min-h-svh w-full items-center justify-center p-6">
       <div className="w-full max-w-md">
-        <div className="flex flex-col items-center gap-6">
-          <div className="flex items-center gap-2 text-primary">
-            <BookOpen className="h-8 w-8" />
-            <span className="text-2xl font-bold">StudyBuddy</span>
+        <form onSubmit={handleSignUp} className="space-y-4">
+          <div>
+            <Label>Display Name</Label>
+            <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
           </div>
-          <Card className="w-full">
-            <CardHeader className="text-center">
-              <CardTitle className="text-2xl">Create an account</CardTitle>
-              <CardDescription>Start your learning journey today</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSignUp}>
-                <div className="flex flex-col gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="displayName">Display Name</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        id="displayName"
-                        type="text"
-                        placeholder="Your name"
-                        required
-                        value={displayName}
-                        onChange={(e) => setDisplayName(e.target.value)}
-                        className="pl-10"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="email">Email</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="you@example.com"
-                        required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="pl-10"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="password">Password</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        id="password"
-                        type="password"
-                        placeholder="At least 6 characters"
-                        required
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="pl-10"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="confirmPassword">Confirm Password</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        id="confirmPassword"
-                        type="password"
-                        placeholder="Confirm your password"
-                        required
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="pl-10"
-                      />
-                    </div>
-                  </div>
-                  {error && <p className="text-sm text-destructive">{error}</p>}
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Creating account...
-                      </>
-                    ) : (
-                      "Create account"
-                    )}
-                  </Button>
-                </div>
-                <div className="mt-4 text-center text-sm">
-                  Already have an account?{" "}
-                  <Link href="/auth/login" className="font-medium text-primary hover:underline">
-                    Sign in
-                  </Link>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
+
+          <div>
+            <Label>Email</Label>
+            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          </div>
+
+          <div>
+            <Label>Password</Label>
+            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          </div>
+
+          <div>
+            <Label>Confirm Password</Label>
+            <Input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+            />
+          </div>
+
+          {error && <p className="text-red-500 text-sm">{error}</p>}
+
+          <Button type="submit" disabled={loading} className="w-full">
+            {loading ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : null}
+            Create Account
+          </Button>
+
+          <p className="text-sm text-center">
+            Already have an account? <Link href="/auth/login" className="text-blue-600">Log in</Link>
+          </p>
+        </form>
       </div>
     </div>
   )
