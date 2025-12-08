@@ -30,7 +30,7 @@ export default function SignUpPage() {
 
     setLoading(true)
 
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -43,8 +43,14 @@ export default function SignUpPage() {
 
     if (signUpError) return setError(signUpError.message)
 
-    alert("Account created! Please check your email to confirm.")
-    router.push("/auth/login")
+    // ❗ Important: Supabase does NOT log in user until email confirmed
+    if (data?.user) {
+      alert("Account created! Check your email and click the confirmation link before logging in.")
+      router.push("/auth/login")
+      return
+    }
+
+    setError("Unexpected error occurred. Please try again.")
   }
 
   return (
@@ -53,17 +59,31 @@ export default function SignUpPage() {
         <form onSubmit={handleSignUp} className="space-y-4">
           <div>
             <Label>Display Name</Label>
-            <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
+            <Input
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              required
+            />
           </div>
 
           <div>
             <Label>Email</Label>
-            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
           </div>
 
           <div>
             <Label>Password</Label>
-            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <Input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
           </div>
 
           <div>
@@ -84,7 +104,10 @@ export default function SignUpPage() {
           </Button>
 
           <p className="text-sm text-center">
-            Already have an account? <Link href="/auth/login" className="text-blue-600">Log in</Link>
+            Already have an account?{" "}
+            <Link href="/auth/login" className="text-blue-600">
+              Log in
+            </Link>
           </p>
         </form>
       </div>
