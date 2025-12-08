@@ -4,12 +4,18 @@ import { NextResponse } from "next/server"
 export async function GET(request: Request) {
   const supabase = await createClient()
   const url = new URL(request.url)
-  const token = url.searchParams.get("token")
+
+  const code = url.searchParams.get("code")
   const type = url.searchParams.get("type")
 
-  // Supabase sends token + type=signup for email confirmation
-  if (token && type === "signup") {
-    await supabase.auth.exchangeCodeForSession(token)
+  if (code && type === "signup") {
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
+
+    if (error) {
+      console.error("Session exchange failed:", error.message)
+      return NextResponse.redirect("/auth/login?error=verification_failed")
+    }
+
     return NextResponse.redirect("/dashboard")
   }
 
