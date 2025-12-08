@@ -5,19 +5,19 @@ export async function GET(request: Request) {
   const supabase = await createClient()
   const url = new URL(request.url)
 
+  // Supabase sends ?code= for email confirmation & sign-in links
   const code = url.searchParams.get("code")
-  const type = url.searchParams.get("type")
 
-  if (code && type === "signup") {
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
+  if (code) {
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
 
-    if (error) {
-      console.error("Session exchange failed:", error.message)
-      return NextResponse.redirect("/auth/login?error=verification_failed")
+    if (!error) {
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard`)
     }
 
-    return NextResponse.redirect("/dashboard")
+    console.error("Auth exchange error:", error)
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/auth/login?error=invalid-code`)
   }
 
-  return NextResponse.redirect("/auth/login")
+  return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/auth/login`)
 }
