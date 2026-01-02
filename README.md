@@ -4,6 +4,7 @@ StudyBuddy is a full-stack intelligent learning platform designed to help studen
 Built with Next.js, Supabase, Docker, and Groq (LLaMA 3.1) — it provides a seamless, fast, and personalized learning experience.
 
 🚀 Features Overview
+
 🤖 AI Chatbot (Study Assistant)
 
 Uses Groq LLaMA 3.1 8B Instant
